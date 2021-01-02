@@ -214,7 +214,6 @@ def keep_query_convert(keepapi, keepquery):
       if gnote.title == '':
         gnote.title = note_date
 
-      #note_title = re.sub('[^A-z0-9-]', ' ', gnote.title)[0:99]
       note_title = gnote.title.replace(':', ' –')
  
       note_text = gnote.text.replace('”','"').replace('“','"').replace("‘","'").replace("’","'").replace('•', "-").replace(u"\u2610", '[ ]').replace(u"\u2611", '[x]').replace(u'\xa0', u' ').replace(u'\u2013', '--').replace(u'\u2014', '--').replace(u'\u2026', '...').replace(u'\u00b1', '+/-')
