@@ -10,6 +10,7 @@ import shutil
 import re
 import time
 import configparser
+import pendulum
 from pathlib import Path
 
 
@@ -152,7 +153,7 @@ def keep_download_blob(blob_url, blob_name, blob_path):
     if os.path.exists(data_file):
       os.remove(data_file)
 
-    return("![[" + MEDIADEFAULTPATH + media_name + "]](" + MEDIADEFAULTPATH + media_name + ")")
+    return("![[" + MEDIADEFAULTPATH + media_name + "]]")
 
 
 def keep_save_md_file(keepapi, note_title, note_text, note_labels, note_blobs, note_date, note_created, note_updated, note_id):
@@ -176,13 +177,21 @@ def keep_save_md_file(keepapi, note_title, note_text, note_labels, note_blobs, n
         image_url = keepapi.getMediaLink(blob)
         image_name = note_title + str(idx)
         blob_file = keep_download_blob(image_url, image_name, mediapath)
-        note_text = blob_file + "\n" + note_text 
+        note_text = blob_file + "\n\n" + note_text
+
+      note_created_new = pendulum.parse(note_created).format('ddd, Do MMMM YYYY, hh:mm A z')
+      note_updated_new = pendulum.parse(note_updated).format('ddd, Do MMMM YYYY, hh:mm A z')
  
       f=open(md_file,"w+", errors="ignore")
-      f.write(url_to_md(url_to_md(note_text, "http://"), "https://") + "\n")
-      f.write("\n" + note_labels + "\n\n")
-      f.write("Created: " + note_created + "      Updated: " + note_updated + "\n\n")
-      f.write("["+ KEEP_NOTE_URL + note_id + "](" + KEEP_NOTE_URL + note_id + ")\n\n")
+      f.write("# " + note_title + "\n\n")
+      f.write("---\n\n")
+      f.write("`Tags:` " + note_labels + "\n\n")
+      f.write("---\n\n")
+      f.write(url_to_md(url_to_md(note_text, "http://"), "https://") + "\n\n")
+      f.write("---\n\n")
+      f.write("    Created: " + note_created_new + "\n")
+      f.write("    Updated: " + note_updated_new + "\n")
+      f.write("    Source:  " + KEEP_NOTE_URL + note_id + "\n")
       f.close
     except Exception as e:
       raise Exception("Problem with markdown file creation: " + str(md_file) + "\r\n" + TECH_ERR + repr(e))
@@ -192,7 +201,7 @@ def keep_save_md_file(keepapi, note_title, note_text, note_labels, note_blobs, n
 def keep_query_convert(keepapi, keepquery):
 
     if keepquery == "--all":
-      gnotes = keepapi.all()
+      gnotes = keepapi.find(archived=False, trashed=False)
     else:
       if keepquery[0] == "#":
         gnotes = keepapi.find(labels=[keepapi.findLabel(keepquery[1:])], archived=False, trashed=False)
@@ -205,7 +214,8 @@ def keep_query_convert(keepapi, keepquery):
       if gnote.title == '':
         gnote.title = note_date
 
-      note_title = re.sub('[^A-z0-9-]', ' ', gnote.title)[0:99]
+      #note_title = re.sub('[^A-z0-9-]', ' ', gnote.title)[0:99]
+      note_title = gnote.title.replace(':', ' –')
  
       note_text = gnote.text.replace('”','"').replace('“','"').replace("‘","'").replace("’","'").replace('•', "-").replace(u"\u2610", '[ ]').replace(u"\u2611", '[x]').replace(u'\xa0', u' ').replace(u'\u2013', '--').replace(u'\u2014', '--').replace(u'\u2026', '...').replace(u'\u00b1', '+/-')
 
@@ -214,7 +224,7 @@ def keep_query_convert(keepapi, keepquery):
       note_labels = ""
       for label in labels:
         note_labels = note_labels + " #" + str(label).replace(' ','-').replace('&','and')
-      note_labels = re.sub('[^A-z0-9-_# ]', '-', note_labels)
+      note_labels = re.sub('[^A-z0-9-_# ]', '-', note_labels).strip()
         
       print (note_title)
       #print (note_text)
